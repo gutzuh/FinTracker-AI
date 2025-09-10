@@ -69,6 +69,7 @@ def _format_transaction_response(transaction_data):
 
 
 @app.post('/')
+@app.post('/api/webhook')
 async def telegram_webhook(request: Request):
     try:
         update = await request.json()
