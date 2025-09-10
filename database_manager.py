@@ -1,20 +1,8 @@
 import sqlite3
 import json
-from datetime import datetime
-import logging
-
-logger = logging.getLogger(__name__)
-
-class DatabaseManager:
-    def __init__(self, db_path='financial_data.db'):
-        self.db_path = db_path
-        self.init_db()
-    
-    def init_db(self):
-        """Inicializa o banco de dados com tabelas necessárias"""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_conn()
         cursor = conn.cursor()
-        
+
         # Tabela de transações financeiras
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS transactions (
@@ -29,6 +17,35 @@ class DatabaseManager:
                 processed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 status TEXT DEFAULT 'processed',
                 input_method TEXT DEFAULT 'image'
+            )
+        ''')
+
+        # Tabela de itens de transação
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS transaction_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                transaction_id INTEGER,
+                description TEXT,
+                quantity REAL,
+                unit_price REAL,
+                total_price REAL,
+                category TEXT,
+                FOREIGN KEY (transaction_id) REFERENCES transactions (id)
+            )
+        ''')
+
+        # Verificar se a coluna input_method existe, se não, adicionar
+        try:
+            cursor.execute("PRAGMA table_info(transactions)")
+            columns = [column[1] for column in cursor.fetchall()]
+            if 'input_method' not in columns:
+                cursor.execute('ALTER TABLE transactions ADD COLUMN input_method TEXT DEFAULT "image"')
+                logger.info("Coluna input_method adicionada à tabela transactions")
+        except Exception as e:
+            logger.error(f"Erro ao verificar/adicionar coluna: {str(e)}")
+
+        conn.commit()
+        conn.close()
             )
         ''')
         
@@ -64,7 +81,7 @@ class DatabaseManager:
         Salva uma transação processada no banco de dados
         """
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = self._get_conn()
             cursor = conn.cursor()
             
             # Inserir transação principal
@@ -112,7 +129,7 @@ class DatabaseManager:
     def get_transactions(self, chat_id, limit=10):
         """Recupera transações de um chat específico"""
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = self._get_conn()
             cursor = conn.cursor()
             
             cursor.execute('''
@@ -133,7 +150,7 @@ class DatabaseManager:
     def get_financial_summary(self, chat_id):
         """Retorna um resumo financeiro para um chat"""
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = self._get_conn()
             cursor = conn.cursor()
             
             # Total por categoria
@@ -174,7 +191,7 @@ class DatabaseManager:
         Limpa o banco de dados - se chat_id for fornecido, limpa apenas para esse chat
         """
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = self._get_conn()
             cursor = conn.cursor()
             
             if chat_id:
