@@ -78,7 +78,14 @@ async def telegram_webhook(request: Request):
 
     # Salva o último update recebido (útil para debug)
     try:
-        with open('last_update.json', 'w') as f:
+        last_update_path = os.getenv('LAST_UPDATE_PATH', '/tmp/last_update.json')
+        dirp = os.path.dirname(last_update_path)
+        if dirp:
+            try:
+                os.makedirs(dirp, exist_ok=True)
+            except Exception:
+                pass
+        with open(last_update_path, 'w') as f:
             json.dump(update, f)
     except Exception as e:
         logger.error(f'Erro salvando update: {e}')
